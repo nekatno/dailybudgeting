@@ -1,3 +1,53 @@
+"use client";
+
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  onSnapshot,
+  query,
+  setDoc,
+  updateDoc,
+  where
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { AuditLog, Budget, DailyClosing, RecurringExpense, Transaction, UserProfile } from "@/lib/types";
+import { nowISO } from "@/lib/utils";
+
+function stripId<T extends { id: string }>(item: T) {
+  const { id, ...payload } = item;
+  return payload;
+}
+
+function cleanFirestoreData<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => cleanFirestoreData(item)) as T;
+  }
+
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .map(([key, item]) => [key, cleanFirestoreData(item)]);
+
+    return Object.fromEntries(entries) as T;
+  }
+
+  return value;
+}
+
+function sortByDateDesc<T extends { date: string }>(items: T[]) {
+  return items.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function sortByCreatedDesc<T extends { createdAt: string }>(items: T[]) {
+  return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function upsertUser(profile: UserProfile) {
+  const timestamp = nowISO();
+  await setDoc(
     doc(db, "users", profile.id),
     cleanFirestoreData({
       ...stripId(profile),
