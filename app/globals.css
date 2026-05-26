@@ -39,7 +39,7 @@ textarea:focus {
 .dark input:not([type="checkbox"]):focus,
 .dark select:focus,
 .dark textarea:focus {
-  @apply ring-brand-950;
+  @apply ring-brand-700;
 }
 
 label {
