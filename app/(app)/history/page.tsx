@@ -41,9 +41,14 @@ export default function HistoryPage() {
     try {
       await removeTransaction(transaction);
       if (profile.autoSync && profile.spreadsheetId && accessToken) {
-        const remaining = (await listTransactions(profile.id)).filter((item) => item.id !== transaction.id);
-        await rewriteTransactionsSheet(profile.spreadsheetId, remaining, profile, accessToken);
-        await updateUserSettings(profile.id, { lastSyncAt: new Date().toISOString() });
+        try {
+          const remaining = (await listTransactions(profile.id)).filter((item) => item.id !== transaction.id);
+          await rewriteTransactionsSheet(profile.spreadsheetId, remaining, profile, accessToken);
+          await updateUserSettings(profile.id, { lastSyncAt: new Date().toISOString() });
+        } catch (error) {
+          toast.warning(error instanceof Error ? `Transaksi dihapus, tapi sync Sheets gagal: ${error.message}` : "Transaksi dihapus, tapi sync Sheets gagal");
+          return;
+        }
       }
       toast.success("Transaksi dihapus");
     } catch (error) {
