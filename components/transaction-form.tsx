@@ -48,6 +48,33 @@ export function TransactionForm({ transaction, onSaved }: { transaction?: Transa
     }
   });
 
+  async function syncCreatedTransaction(saved: Transaction) {
+    if (!profile?.autoSync || !profile.spreadsheetId || !accessToken) return true;
+
+    try {
+      await appendTransactionToSheet(profile.spreadsheetId, saved, profile, accessToken);
+      await updateUserSettings(profile.id, { lastSyncAt: new Date().toISOString() });
+      return true;
+    } catch (error) {
+      toast.warning(error instanceof Error ? `Transaksi tersimpan, tapi sync Sheets gagal: ${error.message}` : "Transaksi tersimpan, tapi sync Sheets gagal");
+      return false;
+    }
+  }
+
+  async function syncUpdatedTransaction(updated: Transaction) {
+    if (!profile?.autoSync || !profile.spreadsheetId || !accessToken) return true;
+
+    try {
+      const allTransactions = await listTransactions(profile.id);
+      await rewriteTransactionsSheet(profile.spreadsheetId, allTransactions.map((item) => (item.id === updated.id ? updated : item)), profile, accessToken);
+      await updateUserSettings(profile.id, { lastSyncAt: new Date().toISOString() });
+      return true;
+    } catch (error) {
+      toast.warning(error instanceof Error ? `Transaksi diperbarui, tapi sync Sheets gagal: ${error.message}` : "Transaksi diperbarui, tapi sync Sheets gagal");
+      return false;
+    }
+  }
+
   async function onSubmit(values: FormValues) {
     if (!profile) return;
     setSaving(true);
@@ -64,12 +91,8 @@ export function TransactionForm({ transaction, onSaved }: { transaction?: Transa
       };
       if (transaction) {
         const updated = await updateTransaction(transaction, { ...payload, receiptUrl: receiptUrl ?? transaction.receiptUrl });
-        if (profile.autoSync && profile.spreadsheetId && accessToken) {
-          const allTransactions = await listTransactions(profile.id);
-          await rewriteTransactionsSheet(profile.spreadsheetId, allTransactions.map((item) => (item.id === updated.id ? updated : item)), profile, accessToken);
-          await updateUserSettings(profile.id, { lastSyncAt: new Date().toISOString() });
-        }
-        toast.success("Transaksi diperbarui");
+        const synced = await syncUpdatedTransaction(updated);
+        if (synced) toast.success("Transaksi diperbarui");
         onSaved?.();
       } else {
         const saved = await createTransaction({
@@ -82,11 +105,8 @@ export function TransactionForm({ transaction, onSaved }: { transaction?: Transa
           date: payload.date,
           receiptUrl
         });
-        if (profile.autoSync && profile.spreadsheetId && accessToken) {
-          await appendTransactionToSheet(profile.spreadsheetId, saved, profile, accessToken);
-          await updateUserSettings(profile.id, { lastSyncAt: new Date().toISOString() });
-        }
-        toast.success("Transaksi disimpan");
+        const synced = await syncCreatedTransaction(saved);
+        if (synced) toast.success("Transaksi disimpan");
         router.push("/dashboard");
       }
     } catch (error) {
