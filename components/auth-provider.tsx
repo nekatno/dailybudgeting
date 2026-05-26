@@ -14,6 +14,7 @@ type AuthContextValue = {
   accessToken: string | null;
   loading: boolean;
   login: () => Promise<void>;
+  connectGoogleSheets: () => Promise<string | null>;
   logout: () => Promise<void>;
 };
 
@@ -42,23 +43,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [firebaseUser]);
 
   async function login() {
-    const result = await signInWithGoogle();
-    const timestamp = nowISO();
-    await upsertUser({
-      ...userToProfile(result.user),
-      id: result.user.uid,
-      createdAt: timestamp,
-      updatedAt: timestamp
-    });
-    await addAuditLog({
-      userId: result.user.uid,
-      action: "login",
-      entityType: "user",
-      entityId: result.user.uid,
-      newValue: { email: result.user.email }
-    });
-    setAccessToken(result.accessToken ?? null);
-    toast.success("Login berhasil");
+    try {
+      const result = await signInWithGoogle();
+      const timestamp = nowISO();
+      await upsertUser({
+        ...userToProfile(result.user),
+        id: result.user.uid,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      });
+      await addAuditLog({
+        userId: result.user.uid,
+        action: "login",
+        entityType: "user",
+        entityId: result.user.uid,
+        newValue: { email: result.user.email }
+      });
+      setAccessToken(result.accessToken ?? null);
+      toast.success("Login berhasil");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Login Google gagal";
+      toast.error(message);
+      throw error;
+    }
+  }
+
+  async function connectGoogleSheets() {
+    try {
+      const result = await signInWithGoogle();
+      setFirebaseUser(result.user);
+      setAccessToken(result.accessToken ?? null);
+      if (!result.accessToken) {
+        toast.error("Google tidak mengirim token Sheets. Coba login ulang dan izinkan akses spreadsheet.");
+        return null;
+      }
+      toast.success("Akses Google Sheets tersambung");
+      return result.accessToken;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menyambungkan Google Sheets";
+      toast.error(message);
+      return null;
+    }
   }
 
   async function logout() {
@@ -68,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const value = useMemo(
-    () => ({ firebaseUser, profile, accessToken, loading, login, logout }),
+    () => ({ firebaseUser, profile, accessToken, loading, login, connectGoogleSheets, logout }),
     [firebaseUser, profile, accessToken, loading]
   );
 
