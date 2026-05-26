@@ -17,7 +17,23 @@ async function sheetsRequest<T>(path: string, accessToken: string, init?: Reques
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(message || "Google Sheets request failed");
+    try {
+      const payload = JSON.parse(message) as { error?: { message?: string; status?: string; details?: Array<{ metadata?: { activationUrl?: string } }> } };
+      const activationUrl = payload.error?.details?.find((detail) => detail.metadata?.activationUrl)?.metadata?.activationUrl;
+      if (payload.error?.status === "PERMISSION_DENIED" && payload.error.message?.includes("Google Sheets API")) {
+        throw new Error(
+          activationUrl
+            ? `Google Sheets API belum aktif. Aktifkan di Google Cloud: ${activationUrl}`
+            : "Google Sheets API belum aktif di Google Cloud project."
+        );
+      }
+      throw new Error(payload.error?.message || "Google Sheets request failed");
+    } catch (error) {
+      if (error instanceof Error && error.message !== message) {
+        throw error;
+      }
+      throw new Error(message || "Google Sheets request failed");
+    }
   }
 
   return response.json() as Promise<T>;
