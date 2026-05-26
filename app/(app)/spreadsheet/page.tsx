@@ -11,7 +11,7 @@ import { createBudgetSpreadsheet, rewriteTransactionsSheet } from "@/lib/sheets"
 import { formatDateTime } from "@/lib/utils";
 
 export default function SpreadsheetPage() {
-  const { profile, accessToken } = useAuth();
+  const { profile, accessToken, connectGoogleSheets } = useAuth();
   const { transactions } = useUserData();
   const [spreadsheetId, setSpreadsheetId] = useState(profile?.spreadsheetId ?? "");
   const [autoSync, setAutoSync] = useState(profile?.autoSync ?? true);
@@ -24,13 +24,14 @@ export default function SpreadsheetPage() {
   }
 
   async function createSheet() {
-    if (!profile || !accessToken) {
-      toast.error("Login ulang agar token Google Sheets tersedia");
+    if (!profile) return;
+    const token = accessToken ?? (await connectGoogleSheets());
+    if (!token) {
       return;
     }
     setBusy(true);
     try {
-      const id = await createBudgetSpreadsheet(accessToken);
+      const id = await createBudgetSpreadsheet(token);
       setSpreadsheetId(id);
       await updateUserSettings(profile.id, { spreadsheetId: id, autoSync: true, lastSyncAt: new Date().toISOString() });
       toast.success("Spreadsheet dibuat dan terhubung");
@@ -42,13 +43,17 @@ export default function SpreadsheetPage() {
   }
 
   async function manualSync() {
-    if (!profile || !accessToken || !spreadsheetId) {
-      toast.error("Spreadsheet dan token Google wajib tersedia");
+    if (!profile || !spreadsheetId) {
+      toast.error("Spreadsheet ID wajib diisi");
+      return;
+    }
+    const token = accessToken ?? (await connectGoogleSheets());
+    if (!token) {
       return;
     }
     setBusy(true);
     try {
-      await rewriteTransactionsSheet(spreadsheetId, transactions, profile, accessToken);
+      await rewriteTransactionsSheet(spreadsheetId, transactions, profile, token);
       const lastSyncAt = new Date().toISOString();
       await updateUserSettings(profile.id, { spreadsheetId, autoSync, lastSyncAt });
       await addAuditLog({
