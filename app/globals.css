@@ -11,17 +11,43 @@
 }
 
 body {
-  @apply bg-slate-50 text-slate-950 antialiased dark:bg-slate-950 dark:text-slate-100;
+  @apply bg-slate-50 text-slate-950 antialiased;
+}
+
+.dark body {
+  @apply bg-slate-950 text-slate-100;
 }
 
 input:not([type="checkbox"]),
 select,
 textarea {
-  @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-800 dark:bg-slate-900 dark:focus:ring-brand-950;
+  @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition;
+}
+
+input:not([type="checkbox"]):focus,
+select:focus,
+textarea:focus {
+  @apply border-brand-500 ring-2 ring-brand-100;
+}
+
+.dark input:not([type="checkbox"]),
+.dark select,
+.dark textarea {
+  @apply border-slate-800 bg-slate-900;
+}
+
+.dark input:not([type="checkbox"]):focus,
+.dark select:focus,
+.dark textarea:focus {
+  @apply ring-brand-950;
 }
 
 label {
-  @apply text-sm font-medium text-slate-700 dark:text-slate-200;
+  @apply text-sm font-medium text-slate-700;
+}
+
+.dark label {
+  @apply text-slate-200;
 }
 
 table {
@@ -29,9 +55,17 @@ table {
 }
 
 th {
-  @apply border-b border-slate-200 px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800;
+  @apply border-b border-slate-200 px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500;
+}
+
+.dark th {
+  @apply border-slate-800;
 }
 
 td {
-  @apply border-b border-slate-100 px-3 py-3 dark:border-slate-900;
+  @apply border-b border-slate-100 px-3 py-3;
+}
+
+.dark td {
+  @apply border-slate-900;
 }
