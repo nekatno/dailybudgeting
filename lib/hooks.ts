@@ -22,7 +22,16 @@ export function useUserData() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!profile) return undefined;
+    if (!profile) {
+      setTransactions([]);
+      setBudgets([]);
+      setRecurring([]);
+      setClosings([]);
+      setAuditLogs([]);
+      setLoading(false);
+      return undefined;
+    }
+
     setLoading(true);
     const unsubscribers = [
       subscribeTransactions(profile.id, setTransactions),

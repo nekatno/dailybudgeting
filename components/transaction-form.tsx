@@ -91,9 +91,9 @@ export function TransactionForm({ transaction, onSaved }: { transaction?: Transa
       };
       if (transaction) {
         const updated = await updateTransaction(transaction, { ...payload, receiptUrl: receiptUrl ?? transaction.receiptUrl });
-        const synced = await syncUpdatedTransaction(updated);
-        if (synced) toast.success("Transaksi diperbarui");
+        toast.success("Transaksi diperbarui");
         onSaved?.();
+        void syncUpdatedTransaction(updated);
       } else {
         const saved = await createTransaction({
           userId: profile.id,
@@ -105,9 +105,9 @@ export function TransactionForm({ transaction, onSaved }: { transaction?: Transa
           date: payload.date,
           receiptUrl
         });
-        const synced = await syncCreatedTransaction(saved);
-        if (synced) toast.success("Transaksi disimpan");
+        toast.success("Transaksi disimpan");
         router.push("/dashboard");
+        void syncCreatedTransaction(saved);
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Gagal menyimpan transaksi");

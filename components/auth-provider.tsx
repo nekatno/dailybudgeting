@@ -29,7 +29,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
-      setLoading(false);
+      if (!user) {
+        setProfile(null);
+        setLoading(false);
+      }
     });
     return unsubscribe;
   }, []);
@@ -39,7 +42,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(null);
       return undefined;
     }
-    return subscribeUser(firebaseUser.uid, setProfile);
+    setLoading(true);
+    return subscribeUser(firebaseUser.uid, async (existingProfile) => {
+      if (existingProfile) {
+        setProfile(existingProfile);
+        setLoading(false);
+        return;
+      }
+
+      const timestamp = nowISO();
+      const fallbackProfile = {
+        ...userToProfile(firebaseUser),
+        id: firebaseUser.uid,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      };
+      setProfile(fallbackProfile);
+      setLoading(false);
+      await upsertUser(fallbackProfile);
+    });
   }, [firebaseUser]);
 
   async function login() {
@@ -59,7 +80,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         entityId: result.user.uid,
         newValue: { email: result.user.email }
       });
-      setAccessToken(result.accessToken ?? null);
       toast.success("Login berhasil");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Login Google gagal";
@@ -70,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function connectGoogleSheets() {
     try {
-      const result = await signInWithGoogle();
+      const result = await signInWithGoogle({ includeSheets: true, forceConsent: true });
       setFirebaseUser(result.user);
       setAccessToken(result.accessToken ?? null);
       if (!result.accessToken) {

@@ -2,8 +2,10 @@
 
 import { getApps, initializeApp } from "firebase/app";
 import {
+  browserLocalPersistence,
   getAuth,
   GoogleAuthProvider,
+  setPersistence,
   signInWithPopup,
   signOut,
   type User
@@ -26,17 +28,29 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
-export function buildGoogleProvider() {
+let persistencePromise: Promise<void> | null = null;
+
+function ensureAuthPersistence() {
+  persistencePromise ??= setPersistence(auth, browserLocalPersistence);
+  return persistencePromise;
+}
+
+export function buildGoogleProvider(options?: { includeSheets?: boolean; forceConsent?: boolean }) {
   const provider = new GoogleAuthProvider();
   provider.addScope("profile");
   provider.addScope("email");
-  provider.addScope("https://www.googleapis.com/auth/spreadsheets");
-  provider.setCustomParameters({ prompt: "select_account consent" });
+  if (options?.includeSheets) {
+    provider.addScope("https://www.googleapis.com/auth/spreadsheets");
+  }
+  if (options?.forceConsent) {
+    provider.setCustomParameters({ prompt: "consent" });
+  }
   return provider;
 }
 
-export async function signInWithGoogle() {
-  const credential = await signInWithPopup(auth, buildGoogleProvider());
+export async function signInWithGoogle(options?: { includeSheets?: boolean; forceConsent?: boolean }) {
+  await ensureAuthPersistence();
+  const credential = await signInWithPopup(auth, buildGoogleProvider(options));
   const oauth = GoogleAuthProvider.credentialFromResult(credential);
   return {
     user: credential.user,
